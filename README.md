@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# تطبيق ختم المستندات (إصدار الويب البسيط)
 
-# Run and deploy your AI Studio app
+يوفر هذا المشروع واجهة ويب خفيفة بالكامل باستخدام HTML وCSS وJavaScript فقط لرفع ختم رقمي وإضافته على الفواتير أو المستندات، مع إمكانية تنزيل النتيجة بصيغة صورة.
 
-This contains everything you need to run your app locally.
+## المزايا
+- حفظ صورة الختم محليًا لاستخدامها في الزيارات اللاحقة.
+- دعم رفع الصور أو ملفات PDF (الصفحة الأولى فقط) للختم.
+- سحب الختم وتغيير حجمه من خلال مقابض التحكم على لوحة الرسم.
+- تصدير المستند المختوم بجودة عالية.
 
-View your app in AI Studio: https://ai.studio/apps/temp/8
+## كيفية الاستخدام
+1. افتح ملف [`index.html`](index.html) في متصفح حديث يدعم JavaScript.
+2. ارفع صورة الختم (ستُحفظ تلقائيًا في المتصفح).
+3. ارفع الفاتورة أو المستند الذي ترغب في ختمه.
+4. حرّك الختم أو غيّر حجمه من خلال لوحة الرسم.
+5. اضغط على زر "تنزيل المستند المختوم" لحفظ النتيجة.
 
-## Run Locally
+> **ملاحظة:** يتطلب معالجة ملفات PDF الاتصال بمكتبة [pdf.js](https://mozilla.github.io/pdf.js/)، ويتم تحميلها مباشرة من خلال شبكة CDN عند فتح الصفحة.
 
-**Prerequisites:**  Node.js
+## التطوير
+لا توجد أية أدوات بناء أو تبعيات خارجية. يمكن تعديل ملفات المشروع الثلاثة مباشرة:
+- `index.html`
+- `index.css`
+- `script.js`
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+بعد إجراء أي تغييرات احفظ الملفات وأعد تحميل الصفحة في المتصفح لمشاهدة النتيجة.
