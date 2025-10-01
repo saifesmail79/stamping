@@ -283,6 +283,10 @@ body {
     height: 100%;
     display: block;
     cursor: grab;
+
+    touch-action: none;
+    user-select: none;
+
 }
 
 .canvas-helper {

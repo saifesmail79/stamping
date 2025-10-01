@@ -2,6 +2,18 @@
     const sealStorageKey = 'sealImage';
     const sealNameStorageKey = 'sealFileName';
 
+    let storage;
+    try {
+        storage = window.sessionStorage;
+    } catch (error) {
+        storage = {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+        };
+    }
+
+
     const sealDropzone = document.getElementById('seal-dropzone');
     const invoiceDropzone = document.getElementById('invoice-dropzone');
     const sealInput = document.getElementById('seal-input');
@@ -63,6 +75,9 @@
         sealInput.disabled = state;
         invoiceInput.disabled = state || !sealImageData;
         downloadButton.disabled = state || !invoiceImage || !sealImage;
+
+        toggleInvoiceAvailability();
+
     }
 
     function toggleInvoiceAvailability() {
@@ -192,18 +207,21 @@
     }
 
     function processImageData(imageData) {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('تعذر تحميل الصورة.'));
+
             img.src = imageData;
         });
     }
 
     async function loadSealImage(dataUrl) {
         sealImageData = dataUrl;
-        localStorage.setItem(sealStorageKey, dataUrl);
+        storage.setItem(sealStorageKey, dataUrl);
         if (sealFileName) {
-            localStorage.setItem(sealNameStorageKey, sealFileName);
+            storage.setItem(sealNameStorageKey, sealFileName);
+
         }
         sealImage = await processImageData(dataUrl);
         const aspectRatio = sealImage.width / sealImage.height || 1;
@@ -223,6 +241,9 @@
         canvasPlaceholder.classList.add('hidden');
         canvasHelper.classList.add('visible');
         draw();
+
+        toggleInvoiceAvailability();
+
     }
 
     async function processFile(file) {
@@ -337,11 +358,24 @@
         });
     }
 
-    function getPointerPosition(event) {
+
+    function getEventCoordinates(event) {
+        if ('touches' in event) {
+            const primaryTouch = event.touches[0] || event.changedTouches?.[0];
+            if (!primaryTouch) {
+                return null;
+            }
+            return { clientX: primaryTouch.clientX, clientY: primaryTouch.clientY };
+        }
+        return { clientX: event.clientX, clientY: event.clientY };
+    }
+
+    function getPointerPosition(coords) {
         const rect = canvas.getBoundingClientRect();
         return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
+            x: coords.clientX - rect.left,
+            y: coords.clientY - rect.top,
+
         };
     }
 
@@ -377,15 +411,23 @@
 
     function handlePointerDown(event) {
         if (!sealImage || !invoiceImage) return;
-        const pos = getPointerPosition(event);
+
+        const coords = getEventCoordinates(event);
+        if (!coords) return;
+        const pos = getPointerPosition(coords);
+
         const handles = getResizeHandles(sealTransform);
 
         for (const [key, handlePos] of Object.entries(handles)) {
             if (Math.abs(pos.x - handlePos.x) < RESIZE_HANDLE_SIZE && Math.abs(pos.y - handlePos.y) < RESIZE_HANDLE_SIZE) {
                 isResizing = key;
                 dragStart = pos;
-                canvas.setPointerCapture(event.pointerId);
-                event.preventDefault();
+
+                if ('pointerId' in event && canvas.setPointerCapture) {
+                    canvas.setPointerCapture(event.pointerId);
+                }
+                event.preventDefault?.();
+
                 return;
             }
         }
@@ -394,13 +436,22 @@
             pos.y > sealTransform.y && pos.y < sealTransform.y + sealTransform.height) {
             isDragging = true;
             dragStart = { x: pos.x - sealTransform.x, y: pos.y - sealTransform.y };
-            canvas.setPointerCapture(event.pointerId);
-            event.preventDefault();
+
+            if ('pointerId' in event && canvas.setPointerCapture) {
+                canvas.setPointerCapture(event.pointerId);
+            }
+            event.preventDefault?.();
+            canvas.style.cursor = 'grabbing';
+
         }
     }
 
     function handlePointerMove(event) {
-        const pos = getPointerPosition(event);
+
+        const coords = getEventCoordinates(event);
+        if (!coords) return;
+        const pos = getPointerPosition(coords);
+
         if (!sealImage || !invoiceImage) {
             updateCursorStyle(pos);
             return;
@@ -411,13 +462,18 @@
             return;
         }
 
-        event.preventDefault();
+
+        event.preventDefault?.();
+
         const newTransform = { ...sealTransform };
         const aspectRatio = sealImage.width / sealImage.height || 1;
 
         if (isDragging) {
             newTransform.x = pos.x - dragStart.x;
             newTransform.y = pos.y - dragStart.y;
+
+            canvas.style.cursor = 'grabbing';
+
         } else if (isResizing) {
             const dx = pos.x - dragStart.x;
             const dy = pos.y - dragStart.y;
@@ -451,11 +507,14 @@
     }
 
     function handlePointerUp(event) {
-        if (canvas.hasPointerCapture(event.pointerId)) {
+
+        if ('pointerId' in event && canvas.hasPointerCapture?.(event.pointerId)) {
             canvas.releasePointerCapture(event.pointerId);
         }
+        event.preventDefault?.();
         isDragging = false;
         isResizing = null;
+        canvas.style.cursor = sealImage ? 'grab' : 'default';
     }
 
     function exportImage() {
@@ -509,14 +568,21 @@
         invoiceImageData = null;
         invoiceImage = null;
         invoiceFileName = '';
+
+        setLoading(false);
         updateInvoiceStatus();
         updateDownloadSection();
+        toggleInvoiceAvailability();
+        if (invoiceInput) {
+            invoiceInput.value = '';
+        }
     }
 
     function handleStoredSeal() {
-        const stored = localStorage.getItem(sealStorageKey);
+        const stored = storage.getItem(sealStorageKey);
         if (!stored) return;
-        sealFileName = localStorage.getItem(sealNameStorageKey) || 'seal.png';
+        sealFileName = storage.getItem(sealNameStorageKey) || 'seal.png';
+
         sealImageData = stored;
         processImageData(stored).then((img) => {
             sealImage = img;
@@ -525,14 +591,19 @@
             draw();
             updateDownloadSection();
         }).catch(() => {
-            localStorage.removeItem(sealStorageKey);
-            localStorage.removeItem(sealNameStorageKey);
+
+            storage.removeItem(sealStorageKey);
+            storage.removeItem(sealNameStorageKey);
         });
     }
 
     function initialiseCanvas() {
         fitCanvas();
         clearCanvas();
+
+        canvas.style.touchAction = 'none';
+        canvas.style.userSelect = 'none';
+
         window.addEventListener('resize', () => {
             const prevSize = { ...lastCanvasSize };
             fitCanvas();
@@ -554,11 +625,22 @@
     downloadButton.addEventListener('click', exportImage);
     clearButton.addEventListener('click', clearInvoice);
 
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointerleave', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
+    if (window.PointerEvent) {
+        canvas.addEventListener('pointerdown', handlePointerDown);
+        canvas.addEventListener('pointermove', handlePointerMove);
+        canvas.addEventListener('pointerup', handlePointerUp);
+        canvas.addEventListener('pointerleave', handlePointerUp);
+        canvas.addEventListener('pointercancel', handlePointerUp);
+    } else {
+        canvas.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+        canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+        canvas.addEventListener('touchend', handlePointerUp);
+        canvas.addEventListener('touchcancel', handlePointerUp);
+    }
+
 
     initialiseCanvas();
     handleStoredSeal();
