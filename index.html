@@ -1,29 +1,94 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تطبيق ختم المستندات</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <header class="app-header">
+        <div class="header-content">
+            <h1>تطبيق ختم المستندات</h1>
+            <p>أضف ختمك الرقمي على الفواتير والمستندات بسهولة</p>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <div id="error-message" class="alert" hidden></div>
+        <div class="layout">
+            <section class="controls">
+                <article class="card">
+                    <h2><span class="icon" aria-hidden="true">&#x1F4DD;</span> الخطوة 1: إعداد الختم</h2>
+                    <div id="seal-dropzone" class="dropzone" role="button" tabindex="0" aria-describedby="seal-hint">
+                        <input id="seal-input" type="file" accept="image/*,application/pdf" aria-label="رفع صورة الختم">
+                        <div class="dropzone-content">
+                            <div id="seal-icon" class="upload-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <img id="seal-preview" class="preview" alt="معاينة الختم" hidden>
+                            <p id="seal-status" class="status-text">ارفع صورة الختم</p>
+                            <p id="seal-filename" class="filename" hidden></p>
+                            <p id="seal-hint" class="hint">سيظل الختم متاحًا طوال الجلسة الحالية ويمكن تغييره في أي وقت.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <h2><span class="icon" aria-hidden="true">&#x1F4C4;</span> الخطوة 2: رفع المستند</h2>
+                    <div id="invoice-dropzone" class="dropzone disabled" role="button" tabindex="0" aria-describedby="invoice-hint" aria-disabled="true">
+                        <input id="invoice-input" type="file" accept="image/*,application/pdf" aria-label="رفع الفاتورة أو المستند" disabled>
+                        <div class="dropzone-content">
+                            <div class="upload-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <p id="invoice-status" class="status-text">ارفع الفاتورة أو المستند</p>
+                            <p id="invoice-filename" class="filename" hidden></p>
+                            <p id="invoice-hint" class="hint">يرجى رفع صورة أو ملف PDF يحتوي على صفحة واحدة.</p>
+                        </div>
+                    </div>
+                    <p id="invoice-warning" class="warning" hidden>يجب رفع صورة الختم أولاً.</p>
+                </article>
+
+                <article id="download-card" class="card" hidden>
+                    <h2><span class="icon" aria-hidden="true">&#x2B07;</span> الخطوة 3: التنزيل</h2>
+                    <button id="download-button" class="button primary" type="button" disabled>
+                        <span class="button-icon" aria-hidden="true">&#x2B73;</span>
+                        تنزيل المستند المختوم
+                    </button>
+                    <button id="clear-button" class="button secondary" type="button">ختم مستند آخر</button>
+                </article>
+            </section>
+
+            <section class="canvas-panel">
+                <div class="canvas-wrapper">
+                    <canvas id="editor-canvas" aria-label="مساحة تعديل المستند"></canvas>
+                    <div id="canvas-helper" class="canvas-helper">اسحب الختم لتغيير مكانه، أو اسحب الزوايا لتغيير حجمه</div>
+                    <div id="canvas-placeholder" class="canvas-placeholder">
+                        <div class="placeholder-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>مساحة العمل</h3>
+                        <p>ارفع الختم والمستند لبدء التعديل.</p>
+                    </div>
+                    <div id="loading-indicator" class="loading-overlay" hidden>
+                        <div class="spinner" aria-hidden="true"></div>
+                        <p>جاري معالجة الملف...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="script.js" defer></script>
 </body>
 </html>
