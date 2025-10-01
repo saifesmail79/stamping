@@ -1,6 +1,7 @@
 (() => {
     const sealStorageKey = 'sealImage';
     const sealNameStorageKey = 'sealFileName';
+
     let storage;
     try {
         storage = window.sessionStorage;
@@ -11,6 +12,7 @@
             removeItem: () => {},
         };
     }
+
 
     const sealDropzone = document.getElementById('seal-dropzone');
     const invoiceDropzone = document.getElementById('invoice-dropzone');
@@ -73,7 +75,9 @@
         sealInput.disabled = state;
         invoiceInput.disabled = state || !sealImageData;
         downloadButton.disabled = state || !invoiceImage || !sealImage;
+
         toggleInvoiceAvailability();
+
     }
 
     function toggleInvoiceAvailability() {
@@ -207,6 +211,7 @@
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => reject(new Error('تعذر تحميل الصورة.'));
+
             img.src = imageData;
         });
     }
@@ -216,6 +221,7 @@
         storage.setItem(sealStorageKey, dataUrl);
         if (sealFileName) {
             storage.setItem(sealNameStorageKey, sealFileName);
+
         }
         sealImage = await processImageData(dataUrl);
         const aspectRatio = sealImage.width / sealImage.height || 1;
@@ -235,7 +241,9 @@
         canvasPlaceholder.classList.add('hidden');
         canvasHelper.classList.add('visible');
         draw();
+
         toggleInvoiceAvailability();
+
     }
 
     async function processFile(file) {
@@ -350,6 +358,7 @@
         });
     }
 
+
     function getEventCoordinates(event) {
         if ('touches' in event) {
             const primaryTouch = event.touches[0] || event.changedTouches?.[0];
@@ -366,6 +375,7 @@
         return {
             x: coords.clientX - rect.left,
             y: coords.clientY - rect.top,
+
         };
     }
 
@@ -401,19 +411,23 @@
 
     function handlePointerDown(event) {
         if (!sealImage || !invoiceImage) return;
+
         const coords = getEventCoordinates(event);
         if (!coords) return;
         const pos = getPointerPosition(coords);
+
         const handles = getResizeHandles(sealTransform);
 
         for (const [key, handlePos] of Object.entries(handles)) {
             if (Math.abs(pos.x - handlePos.x) < RESIZE_HANDLE_SIZE && Math.abs(pos.y - handlePos.y) < RESIZE_HANDLE_SIZE) {
                 isResizing = key;
                 dragStart = pos;
+
                 if ('pointerId' in event && canvas.setPointerCapture) {
                     canvas.setPointerCapture(event.pointerId);
                 }
                 event.preventDefault?.();
+
                 return;
             }
         }
@@ -422,18 +436,22 @@
             pos.y > sealTransform.y && pos.y < sealTransform.y + sealTransform.height) {
             isDragging = true;
             dragStart = { x: pos.x - sealTransform.x, y: pos.y - sealTransform.y };
+
             if ('pointerId' in event && canvas.setPointerCapture) {
                 canvas.setPointerCapture(event.pointerId);
             }
             event.preventDefault?.();
             canvas.style.cursor = 'grabbing';
+
         }
     }
 
     function handlePointerMove(event) {
+
         const coords = getEventCoordinates(event);
         if (!coords) return;
         const pos = getPointerPosition(coords);
+
         if (!sealImage || !invoiceImage) {
             updateCursorStyle(pos);
             return;
@@ -444,14 +462,18 @@
             return;
         }
 
+
         event.preventDefault?.();
+
         const newTransform = { ...sealTransform };
         const aspectRatio = sealImage.width / sealImage.height || 1;
 
         if (isDragging) {
             newTransform.x = pos.x - dragStart.x;
             newTransform.y = pos.y - dragStart.y;
+
             canvas.style.cursor = 'grabbing';
+
         } else if (isResizing) {
             const dx = pos.x - dragStart.x;
             const dy = pos.y - dragStart.y;
@@ -485,6 +507,7 @@
     }
 
     function handlePointerUp(event) {
+
         if ('pointerId' in event && canvas.hasPointerCapture?.(event.pointerId)) {
             canvas.releasePointerCapture(event.pointerId);
         }
@@ -545,6 +568,7 @@
         invoiceImageData = null;
         invoiceImage = null;
         invoiceFileName = '';
+
         setLoading(false);
         updateInvoiceStatus();
         updateDownloadSection();
@@ -558,6 +582,7 @@
         const stored = storage.getItem(sealStorageKey);
         if (!stored) return;
         sealFileName = storage.getItem(sealNameStorageKey) || 'seal.png';
+
         sealImageData = stored;
         processImageData(stored).then((img) => {
             sealImage = img;
@@ -566,6 +591,7 @@
             draw();
             updateDownloadSection();
         }).catch(() => {
+
             storage.removeItem(sealStorageKey);
             storage.removeItem(sealNameStorageKey);
         });
@@ -574,8 +600,10 @@
     function initialiseCanvas() {
         fitCanvas();
         clearCanvas();
+
         canvas.style.touchAction = 'none';
         canvas.style.userSelect = 'none';
+
         window.addEventListener('resize', () => {
             const prevSize = { ...lastCanvasSize };
             fitCanvas();
@@ -612,6 +640,7 @@
         canvas.addEventListener('touchend', handlePointerUp);
         canvas.addEventListener('touchcancel', handlePointerUp);
     }
+
 
     initialiseCanvas();
     handleStoredSeal();
